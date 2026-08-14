@@ -25,6 +25,19 @@ worked out from the gap between periods 2 and 3.
 checkboxes. The *only on days I teach* switch hides them on any day where none of the
 blocks are yours.
 
+**Duties** are picked from the roster and pinned to a rotation day, up to three of them,
+after which they repeat on every occurrence of that day. Morning and break duties skip
+Wednesdays, since neither slot exists when teaching starts at 10:45. Lunch duties take
+the first or second half of whatever lunch window the day runs, so they shift to
+12:50–13:15 and 13:15–13:40 on Wednesdays. A day's detail then shows only the half of
+lunch you actually keep.
+
+Some pairings can't happen and are refused with a message: a morning duty alongside
+Advisory 6–10 or the Extended Time of the block that opens the same day, and a break
+duty alongside Advisory 11–12 or a lesson you teach in period 2, since the duty runs to
+10:50. If you name a course into period 2 after assigning a break duty, the duty is
+flagged in the sidebar instead.
+
 ## The views
 
 - **Calendar** — every month, Monday to Friday, each school day showing its rotation
@@ -37,7 +50,8 @@ blocks are yours.
 ## Exporting to your calendar
 
 **Export** lets you pick which courses and commitments to include, and whether to get
-one combined file or one file per item.
+one combined file or one file per item. Duties travel together as a single *Duties*
+calendar, each event titled with its own duty and location.
 
 An `.ics` file always imports into exactly one calendar, so to switch subjects on and
 off independently in Google Calendar you need one file each:

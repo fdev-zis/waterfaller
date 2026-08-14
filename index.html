@@ -10,13 +10,13 @@
 <style>
 :root{
   --bg:#f5f6f8; --panel:#fff; --line:#e3e6eb; --fg:#1a1d21; --muted:#6b7280;
-  --accent:#3b6ef6; --accent-soft:#e8efff; --radius:10px; --head:58px;
+  --accent:#3b6ef6; --accent-soft:#e8efff; --bad:#c0392b; --radius:10px; --head:58px;
   --c1:#ef6461; --c2:#f3944b; --c3:#dfae35; --c4:#5fbf74;
   --c5:#3fb8ac; --c6:#4a90d9; --c7:#7d6cd9; --c8:#c46bb8;
 }
 @media (prefers-color-scheme:dark){
   :root{ --bg:#13151a; --panel:#1b1e24; --line:#2a2f38; --fg:#e7eaee; --muted:#98a0ac;
-         --accent:#6d9bff; --accent-soft:#233150; }
+         --accent:#6d9bff; --accent-soft:#233150; --bad:#ff8a80; }
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -47,16 +47,19 @@ header .sp{flex:1}
 }
 .ghost:hover{border-color:var(--accent);color:var(--accent)}
 
-.layout{display:grid;grid-template-columns:298px 1fr;gap:18px;padding:18px 20px 60px;align-items:start}
-@media (max-width:940px){ .layout{grid-template-columns:1fr} }
+.layout{display:grid;grid-template-columns:298px minmax(0,1fr);gap:18px;padding:18px 20px 60px;align-items:start}
+@media (max-width:940px){ .layout{grid-template-columns:minmax(0,1fr)} }
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);min-width:0}
 /* The sidebar is taller than the viewport, so it scrolls on its own rather
-   than making you travel the whole calendar to reach its bottom. */
+   than making you travel the whole calendar to reach its bottom. A native
+   <select> sizes to its longest option, so min-width:0 keeps the column from
+   being pushed wider than 298px by a duty location. */
 aside{
   position:sticky;top:calc(var(--head) + 8px);
   max-height:calc(100vh - var(--head) - 26px);
-  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
+  min-width:0;max-width:100%;
+  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
   display:flex;flex-direction:column;gap:14px;
   scrollbar-width:thin;scrollbar-color:var(--line) transparent;
 }
@@ -121,6 +124,34 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 }
 .crow.rule{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 
+/* ---------- duty roster ---------- */
+.drow{display:flex;align-items:flex-start;gap:8px;margin-bottom:9px;font-size:12.5px}
+.drow:last-child{margin-bottom:0}
+.dday{
+  width:22px;height:22px;flex:none;border-radius:6px;display:grid;place-items:center;
+  font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent);
+}
+.dtxt{flex:1;min-width:0;line-height:1.35}
+.dtxt b{font-weight:500;display:block;overflow-wrap:anywhere}
+.dtxt .wn{display:block;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.dtxt .bad{display:block;color:var(--bad);font-size:11px;margin-top:2px}
+.drow .x{
+  border:0;background:none;color:var(--muted);flex:none;
+  font-size:16px;line-height:1;padding:2px 3px;
+}
+.drow .x:hover{color:var(--bad)}
+.dpick{
+  display:flex;flex-direction:column;gap:6px;
+  margin-top:2px;padding-top:11px;border-top:1px dashed var(--line);
+}
+.dpick select{
+  border:1px solid var(--line);background:var(--bg);border-radius:7px;
+  padding:5px 7px;font-size:12.5px;width:100%;max-width:100%;min-width:0;
+}
+.dpick .row{display:flex;gap:6px;min-width:0}
+.dpick .row select{flex:1;min-width:0}
+.dpick button{padding:5px 12px;flex:none}
+
 /* ---------- period editor ---------- */
 .prow{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12.5px}
 .prow:last-child{margin-bottom:0}
@@ -162,6 +193,10 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 .chip.x i{font-weight:500;opacity:.75}
 .off-fac .x-fac,.off-flex .x-flex,.off-adv6 .x-adv6,.off-adv11 .x-adv11,
 .only-teach [data-day]:not(.taught) .chip.x{display:none}
+/* A duty is mine but not a lesson: neutral fill, dotted edge. */
+.chip.du{background:color-mix(in srgb,var(--fg) 6%,transparent);border-left:3px dotted var(--muted)}
+.chip.du b{font-weight:400}
+.chip.du i{font-weight:500;opacity:.8}
 
 /* ---------- month grids ---------- */
 .mnav{display:flex;gap:5px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line)}
@@ -235,11 +270,22 @@ dialog .pr .nm{flex:1;padding-left:9px;border-left:3px solid var(--c)}
 dialog .pr .nm.empty{color:var(--muted);font-style:italic;border-left-color:var(--line)}
 dialog .pr .nm.extra{color:var(--muted);border-left-style:dashed}
 dialog .pr .nm.et{border-left-style:dashed}
+dialog .pr .nm.duty{border-left-style:dotted;border-left-color:var(--muted)}
 dialog .lunch{margin:0 0 0 98px}
 dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-content:flex-end}
 #exp{width:min(400px,92vw)}
 #expGo{border-color:var(--accent);color:var(--accent);font-weight:600}
 #expGo:disabled{opacity:.45;pointer-events:none}
+
+/* ---------- toast ---------- */
+#toast{
+  position:fixed;left:50%;bottom:22px;transform:translate(-50%,14px);
+  max-width:min(520px,92vw);background:var(--fg);color:var(--bg);
+  padding:11px 15px;border-radius:9px;font-size:12.5px;line-height:1.45;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);
+  opacity:0;pointer-events:none;z-index:80;transition:opacity .18s,transform .18s;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
 
 @media print{
   header,aside,.mnav,#cycle,#next{display:none!important}
@@ -288,6 +334,18 @@ dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-co
     <section class="card">
       <h2>Standing commitments</h2>
       <div class="body"><div id="extras"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>Duties<span class="sp"></span><span class="wn" id="dcount"></span></h2>
+      <div class="body">
+        <div id="duties"></div>
+        <p class="hint">
+          A duty repeats on every occurrence of its rotation day. Morning and break
+          duties skip Wednesdays, when teaching starts at 10:45; lunch duties take
+          half of whatever lunch window the day runs.
+        </p>
+      </div>
     </section>
 
     <section class="card">
@@ -342,6 +400,8 @@ dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-co
     <button class="ghost" id="expGo" type="button">Export</button>
   </form>
 </dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 "use strict";
@@ -423,10 +483,55 @@ const DEF_EXTRAS = {fac:true, flex:true, adv6:false, adv11:false, onlyTeach:true
    a Wednesday, where teaching doesn't start until 10:45. */
 const EXT = {start:"08:30", end:"09:00", suffix:" — Extended Time"};
 
+/* ---- supervision duties -------------------------------------------------
+   A duty is assigned to a rotation day and then recurs on every occurrence of
+   it. Morning and break duties are excluded from Wednesdays, where teaching
+   starts at 10:45 and neither slot exists. Lunch duties carry a half of the
+   lunch window rather than a clock time, so they follow the Wednesday shift:
+   12:00–12:30 on a normal day becomes 12:50–13:15 on a Wednesday. */
+const MAX_DUTIES = 3;
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "calendar";
+const DUTY_SLOTS = {
+  am: {start:"08:15", end:"08:45", days:[1,2,4,5], when:"08:15–08:45",
+       noun:"morning", group:"Morning · 08:15–08:45"},
+  br: {start:"10:20", end:"10:50", days:[1,2,4,5], when:"10:20–10:50",
+       noun:"break", group:"Break &amp; tardy check · 10:20–10:50"},
+  l1: {half:0, days:[1,2,3,4,5], when:"Lunch, first half",
+       noun:"first-half lunch", group:"Lunch, first half"},
+  l2: {half:1, days:[1,2,3,4,5], when:"Lunch, second half",
+       noun:"second-half lunch", group:"Lunch, second half"},
+  pm: {start:"15:45", end:"16:15", days:[1,2,3,4,5], when:"15:45–16:15",
+       noun:"after-school", group:"After school · 15:45–16:15"},
+};
+const LUNCH_SPOTS = [
+  "Cafeteria A", "Cafeteria B", "Terrasse B",
+  "1st Outdoor Roamer (1) (Lunch terrace, Smoking area) A side",
+  "2nd Outdoor Roamer (1) (Foot path ZIS/Aldi/Dietlimoos) A side",
+  "Gym A", "Gym B", "Field",
+  "Student Lounge and The Den / Fitness Room (1)",
+  "Upper floors building A", "Upper floors building B",
+  "Learning Support Centre A building",
+];
+const DUTIES = [
+  ["am","Morning Welcome","Welcome / Traffic Control Front Entrance Moosstrasse"],
+  ["am","Morning Welcome","Welcome / Safety Busstop Ahornweg / Side Entrance Eichenweg"],
+  ["am","Morning Duty","Cafeteria A"],
+  ["am","Morning Duty","Cafeteria B"],
+  ["br","Break Duty & Tardy Check","Cafeteria A"],
+  ["br","Break Duty & Tardy Check","Field"],
+  ["br","Break Duty & Tardy Check","Cafeteria B"],
+  ["br","Break Duty & Tardy Check","Building B terrase (and eyes on field)"],
+  ...LUNCH_SPOTS.flatMap(w => [["l1","Lunch Duty",w], ["l2","Lunch Duty",w]]),
+  ["pm","After School Duty","Traffic control Pickup Front Entrance Moosstrasse (2)"],
+].map(([slot,type,where]) => ({slot, type, where, id: slot + "-" + slug(where)}));
+const dutyById = id => DUTIES.find(d => d.id === id);
+
 /* ---- date helpers (UTC throughout so nothing shifts by a timezone) ---- */
 const key = d => d.toISOString().slice(0,10);
 const parse = s => new Date(s + "T00:00:00Z");
 const pad = n => String(n).padStart(2,"0");
+const mins = t => +t.slice(0,2) * 60 + +t.slice(3,5);
+const hhmm = m => pad(Math.floor(m/60)) + ":" + pad(m % 60);
 // Which of the two bell schedules a given date runs on.
 const setOf = k => parse(k).getUTCDay() === 3 ? "wed" : "std";
 const sched = k => state.periods[setOf(k)];
@@ -470,6 +575,7 @@ function load(){
     const s = JSON.parse(localStorage.getItem(SAVE));
     if (s?.blocks?.length === 8 && s?.periods?.std?.length === 4) {
       s.blocks = s.blocks.map(b => ({ext:false, ...b}));
+      s.duties = (s.duties || []).filter(a => dutyById(a.id)).slice(0, MAX_DUTIES);
       const extras = {...DEF_EXTRAS, ...s.extras};
       // An earlier version had one switch per group; fold them back into one.
       if ("onlyWed" in extras) extras.onlyTeach = extras.onlyWed;
@@ -482,6 +588,7 @@ function load(){
     blocks: PALETTE.map(color => ({name:"", color, ext:false})),
     periods: {std: times(DEF_PERIODS.std), wed: times(DEF_PERIODS.wed)},
     extras: {...DEF_EXTRAS},
+    duties: [],
   };
 }
 const save = () => localStorage.setItem(SAVE, JSON.stringify(state));
@@ -493,6 +600,56 @@ const extOn = b => !!nameOf(b) && !!state.blocks[b-1].ext;
 const extName = b => nameOf(b) + EXT.suffix;
 // Days that open with block b and run the standard clock.
 const extDays = b => SCHOOL.filter(([k,e]) => e.n === b && setOf(k) !== "wed");
+
+/* A duty's clock times on a given date. Lunch duties take half of that day's
+   lunch window, so they shift with the Wednesday schedule automatically. */
+function dutyTimes(d,k){
+  const s = DUTY_SLOTS[d.slot];
+  if (s.half === undefined) return [s.start, s.end];
+  const ps = sched(k), a = mins(ps[1].end), b = mins(ps[2].start);
+  const mid = a + Math.round((b - a) / 2);
+  return s.half ? [hhmm(mid), hhmm(b)] : [hhmm(a), hhmm(mid)];
+}
+// Every date an assignment falls on: its rotation day, on weekdays the slot runs.
+const dutyDates = a => SCHOOL.filter(([k,e]) =>
+  e.n === a.day && DUTY_SLOTS[dutyById(a.id).slot].days.includes(parse(k).getUTCDay()));
+// Duties due on one date, with their resolved times.
+const dutiesOn = (k,n) => state.duties
+  .filter(a => a.day === n && DUTY_SLOTS[dutyById(a.id).slot].days.includes(parse(k).getUTCDay()))
+  .map(a => { const d = dutyById(a.id); const [start,end] = dutyTimes(d,k); return {d,start,end}; });
+
+/* Why this duty can't sit on this rotation day, or null. Every case here is a
+   total clash — it would apply to all of the day's occurrences, not just some —
+   which is why they're refused outright rather than flagged. */
+function dutyClash(id, day){
+  const slot = dutyById(id).slot;
+  if (slot === "am") {
+    if (state.extras.adv6)
+      return "Advisory 6–10 runs 08:40–08:55 on all four days a morning duty can fall on";
+    if (extOn(day))
+      return `Day ${day} opens with ${nameOf(day)}, whose Extended Time runs 08:30–09:00`;
+  }
+  if (slot === "br") {
+    if (state.extras.adv11)
+      return "Advisory 11–12 runs 10:20–10:40, inside the break duty";
+    const p2 = blocksFor(day)[1];
+    if (nameOf(p2))
+      return `this duty runs to 10:50 but you teach ${nameOf(p2)} in period 2 that day`;
+  }
+  return null;
+}
+/* The lunch actually left to you on a date: a lunch duty eats its half of the
+   break, so only the other half is free, and both halves on duty leave none —
+   which the missing `end` signals. */
+function freeLunch(ps, duties){
+  const a = mins(ps[1].end), b = mins(ps[2].start);
+  const mid = a + Math.round((b - a) / 2);
+  const busy = duties.map(u => DUTY_SLOTS[u.d.slot].half);
+  const from = busy.includes(0) ? mid : a;
+  const to   = busy.includes(1) ? mid : b;
+  return from < to ? {lunch:true, start:hhmm(from), end:hhmm(to)}
+                   : {lunch:true, start:hhmm(a)};
+}
 // Extras switched on and due on this date. They all drop out when "only on days
 // I teach" is set and none of that day's blocks are named.
 const extrasOn = (k,n) => EXTRAS.filter(x => state.extras[x.id]
@@ -540,8 +697,20 @@ $("#extras").innerHTML =
   + crow("onlyTeach", "Only on days I teach",
          "Hides all of the above on any day whose blocks are none of mine", "rule");
 
+// Advisory overlaps a whole family of duties, so switching one on while the other
+// is assigned would be impossible rather than merely awkward: refuse it instead.
+const ADV_HITS = {adv6:"am", adv11:"br"};
+
 $("#extras").addEventListener("change", e => {
-  state.extras[e.target.dataset.x] = e.target.checked;
+  const id = e.target.dataset.x;
+  const hit = e.target.checked && ADV_HITS[id]
+    && state.duties.find(a => dutyById(a.id).slot === ADV_HITS[id]);
+  if (hit) {
+    e.target.checked = false;
+    return toast(`Can't switch that on: your ${DUTY_SLOTS[ADV_HITS[id]].noun} duty `
+      + `on Day ${hit.day} overlaps it. Remove the duty first.`);
+  }
+  state.extras[id] = e.target.checked;
   refresh();
 });
 
@@ -549,9 +718,84 @@ $("#blocks").addEventListener("input", e => {
   const {n,c,e:x} = e.target.dataset;
   if (n !== undefined) state.blocks[n].name = e.target.value;
   else if (c !== undefined) state.blocks[c].color = e.target.value;
-  else state.blocks[x].ext = e.target.checked;
+  else {
+    // Extended time starts at 08:30, inside every morning duty slot.
+    const b = +x + 1;
+    const hit = e.target.checked
+      && state.duties.find(a => a.day === b && dutyById(a.id).slot === "am");
+    if (hit) {
+      e.target.checked = false;
+      return toast(`Can't add extended time to block ${b}: your morning duty on `
+        + `Day ${b} runs 08:15–08:45, overlapping 08:30–09:00.`);
+    }
+    state.blocks[x].ext = e.target.checked;
+  }
   refresh();
 });
+
+/* ---- duties ---- */
+function renderDuties(){
+  const keep = [$("#dsel")?.value, $("#dday")?.value];
+  const rows = state.duties.map((a,i) => {
+    const d = dutyById(a.id), bad = dutyClash(a.id, a.day);
+    return `<div class="drow">
+      <span class="dday" title="Rotation day ${a.day}">${a.day}</span>
+      <span class="dtxt"><b>${esc(d.where)}</b>
+        <span class="wn">${esc(d.type)} · ${DUTY_SLOTS[d.slot].when}</span>
+        ${bad ? `<span class="bad">Conflict: ${esc(bad)}.</span>` : ""}</span>
+      <button class="x" data-rm="${i}" title="Remove this duty">×</button>
+    </div>`;
+  }).join("");
+
+  const picker = state.duties.length >= MAX_DUTIES ? "" : `
+    <div class="dpick">
+      <select id="dsel" aria-label="Duty">
+        <option value="">Choose a duty…</option>
+        ${Object.entries(DUTY_SLOTS).map(([s,v]) =>
+          `<optgroup label="${v.group}">${DUTIES.filter(d => d.slot === s)
+            .map(d => `<option value="${d.id}">${esc(d.where)}</option>`).join("")}</optgroup>`
+        ).join("")}
+      </select>
+      <div class="row">
+        <select id="dday" aria-label="Rotation day">
+          <option value="">Day…</option>
+          ${[1,2,3,4,5,6,7,8].map(n => `<option value="${n}">Day ${n}</option>`).join("")}
+        </select>
+        <button class="ghost" id="dadd">Add</button>
+      </div>
+    </div>`;
+
+  $("#duties").innerHTML = (rows || `<div class="lab">No duties assigned.</div>`) + picker;
+  $("#dcount").textContent = `${state.duties.length}/${MAX_DUTIES}`;
+  if ($("#dsel")) { $("#dsel").value = keep[0] || ""; $("#dday").value = keep[1] || ""; }
+}
+
+$("#duties").addEventListener("click", e => {
+  const rm = e.target.dataset.rm;
+  if (rm !== undefined) { state.duties.splice(rm, 1); refresh(true); return; }
+  if (e.target.id !== "dadd") return;
+
+  const id = $("#dsel").value, day = +$("#dday").value;
+  if (!id || !day) return toast("Pick both a duty and a rotation day.");
+  const d = dutyById(id);
+  if (state.duties.some(a => a.day === day && dutyById(a.id).slot === d.slot))
+    return toast(`You already have a ${DUTY_SLOTS[d.slot].noun} duty on Day ${day}.`);
+  const bad = dutyClash(id, day);
+  if (bad) return toast(`Can't put that on Day ${day}: ${bad}.`);
+
+  $("#dsel").value = $("#dday").value = "";
+  state.duties.push({id, day});
+  refresh(true);
+});
+
+let toastT;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove("on"), 7000);
+}
 
 $("#periods").addEventListener("input", e => {
   const {s,p,f} = e.target.dataset;
@@ -570,7 +814,7 @@ $("#clear").onclick = () => {
 function refresh(hard){
   save();
   if (hard) renderCalendar();
-  paintExtras(); renderNext(); renderStats(); renderCycle();
+  paintExtras(); renderDuties(); renderNext(); renderStats(); renderCycle();
 }
 
 /* Names and colours live in the DOM as variables, so typing updates the
@@ -633,6 +877,7 @@ function renderStats(){
     ["Blocks named", named + "/8"],
     ["Extra events", allSeries().filter(s => s.x)
       .reduce((t,s) => t + eventsOf(s).length, 0)],
+    ["Duty slots", state.duties.reduce((t,a) => t + dutyDates(a).length, 0)],
   ].map(([a,b]) => `<div class="stat"><span>${a}</span><span>${b}</span></div>`).join("");
 }
 
@@ -645,16 +890,21 @@ const xchip = x =>
   `<span class="chip x x-${x.id}"><i>${x.start}</i><b>${x.label}</b></span>`;
 const etchip = b =>
   `<span class="chip et" data-b="${b}" style="--c:var(--c${b})"><i>ET</i><b></b></span>`;
+const dchip = ({d,start,end}) =>
+  `<span class="chip du" title="${esc(`${d.type} — ${d.where} · ${start}–${end}`)}">`
+  + `<i>${start}</i><b>${esc(d.where)}</b></span>`;
 
 /* Everything due on one school day, ordered by clock time so a course and a
    standing commitment interleave correctly. Extras are emitted regardless of
-   their toggle; CSS decides whether they show. */
+   their toggle; CSS decides whether they show. Duties are few and change rarely,
+   so they're emitted only when actually assigned. */
 function dayChips(k,n){
   const ps = sched(k), wd = parse(k).getUTCDay();
   return [
     ...blocksFor(n).map((b,p) => ({t: ps[p].start, html: chip(b,p)})),
     ...EXTRAS.filter(x => x.days.includes(wd)).map(x => ({t: x.start, html: xchip(x)})),
     ...(wd === 3 ? [] : [{t: EXT.start, html: etchip(n)}]),
+    ...dutiesOn(k,n).map(u => ({t: u.start, html: dchip(u)})),
   ].sort((a,b) => a.t.localeCompare(b.t)).map(i => i.html).join("");
 }
 
@@ -717,7 +967,7 @@ function renderNext(){
   const hit = SCHOOL.find(([k]) => k >= t);
   if (!hit) { $("#next").innerHTML = `<div class="dt">The school year is over.</div>`; return; }
   const [k,e] = hit;
-  const empty = !taught(e.n) && !extrasOn(k, e.n).length;
+  const empty = !taught(e.n) && !extrasOn(k, e.n).length && !dutiesOn(k, e.n).length;
   $("#next").innerHTML = `
     <div>
       <div class="lbl">${k === t ? "Today" : "Next school day"}</div>
@@ -737,6 +987,7 @@ $("#months").addEventListener("click", e => {
   dlg.querySelector(".ds").textContent = (info.n % 2 ? "Odd" : "Even")
     + " rotation from block " + info.n
     + (setOf(k) === "wed" ? " · Wednesday times" : "");
+  const duties = dutiesOn(k, info.n);
   const rows = [
     ...blocksFor(info.n).map((b,p) => ({
       start: ps[p].start, end: ps[p].end,
@@ -747,11 +998,14 @@ $("#months").addEventListener("click", e => {
     ...(setOf(k) !== "wed" && extOn(info.n)
       ? [{start: EXT.start, end: EXT.end, name: extName(info.n),
           cls: "et", c: `var(--c${info.n})`}] : []),
-    {start: ps[1].end, end: ps[2].start, lunch: true},
+    ...duties.map(({d,start,end}) =>
+      ({start, end, name: `${d.type} — ${d.where}`, cls: "duty"})),
+    freeLunch(ps, duties),
   ].sort((a,b) => a.start.localeCompare(b.start));
 
   dlg.querySelector(".dl").innerHTML = rows.map(r => r.lunch
-    ? `<div class="lunch">lunch ${r.start}–${r.end}</div>`
+    ? `<div class="lunch">${r.end ? `lunch ${r.start}–${r.end}`
+        : "no lunch break — both halves on duty"}</div>`
     : `<div class="pr" style="--c:${r.c || "var(--line)"}">
          <span class="tm">${r.start}–${r.end}</span>
          <span class="nm ${r.cls}">${esc(r.name)}</span>
@@ -809,10 +1063,20 @@ function allSeries(){
     if (extOn(n)) out.push({key:"e"+n, name:extName(n), etBlock:n});
   });
   EXTRAS.forEach(x => { if (state.extras[x.id]) out.push({key:x.id, name:x.label, x}); });
+  // All duties travel together: they're one calendar, each event titled its own duty.
+  if (state.duties.length) out.push({key:"duties", name:"Duties", duties:true});
   return out;
 }
 
 function eventsOf(s){
+  if (s.duties) return state.duties.flatMap(a => {
+    const d = dutyById(a.id);
+    return dutyDates(a).map(([k,e]) => {
+      const [start,end] = dutyTimes(d,k);
+      return {k, start, end, uid:d.id, sum:`${d.type} — ${d.where}`,
+              desc:`Day ${e.n} · ${DUTY_SLOTS[d.slot].when.toLowerCase()}`};
+    });
+  });
   if (s.etBlock) return extDays(s.etBlock).map(([k,e]) =>
     ({k, start:EXT.start, end:EXT.end, uid:"et",
       desc:`Day ${e.n} · block ${s.etBlock} · extended time`}));
@@ -840,7 +1104,7 @@ function buildICS(list, calName){
         `DTSTAMP:${now}`,
         `DTSTART:${at(ev.k, ev.start)}`,
         `DTEND:${at(ev.k, ev.end)}`,
-        `SUMMARY:${ics(s.name)}`,
+        `SUMMARY:${ics(ev.sum || s.name)}`,
         `DESCRIPTION:${ics(ev.desc)}`,
         "END:VEVENT");
   lines.push("END:VCALENDAR");
@@ -849,7 +1113,6 @@ function buildICS(list, calName){
 
 const ics = s => String(s).replace(/([,;\\])/g,"\\$1");
 const fold = l => l.length <= 74 ? l : l.match(/.{1,74}/g).join("\r\n ");
-const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "calendar";
 
 async function saveFiles(files){
   for (const [name,text] of files) {
