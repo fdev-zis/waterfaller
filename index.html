@@ -192,6 +192,9 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
   border-left:3px solid var(--c);
 }
 .chip i{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted);flex:none}
+/* A block number carries the block's colour, so it reads as an identity rather
+   than a position. Chips without a block keep the muted time tag. */
+.chip[data-b] i{color:var(--c)}
 .chip b{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip b.empty{color:var(--muted);font-style:italic;font-weight:400}
 .chip[hidden]{display:none}
@@ -863,9 +866,14 @@ function paintBlocks(){
       const room = el.querySelector(".lo");
       if (room) { room.textContent = loc; room.hidden = !loc; }
       const t = el.querySelector("b");
+      const p = el.dataset.p;
       t.textContent = name || "Block " + n;
-      t.title = (et ? name + EXT.suffix + ` · ${EXT.start}–${EXT.end}`
-                    : (name || "Block " + n)) + (loc ? ` · ${loc}` : "");
+      // The period left the chip face with the block number, so keep it here.
+      t.title = [
+        et ? name + EXT.suffix + ` · ${EXT.start}–${EXT.end}` : (name || "Block " + n),
+        "block " + n + (p ? `, period ${p}` : ""),
+        loc,
+      ].filter(Boolean).join(" · ");
       t.classList.toggle("empty", !name);
     });
   });
@@ -918,9 +926,11 @@ function renderStats(){
 /* ============================================================
    4. CALENDAR
    ============================================================ */
+// Chips are tagged with the block they are, not the period they sit in: the
+// period is already implied by the chip's place in the day's running order.
 const chip = (b,p) =>
-  `<span class="chip" data-b="${b}" style="--c:var(--c${b})">`
-  + `<i>P${p+1}</i><b></b><span class="lo" hidden></span></span>`;
+  `<span class="chip" data-b="${b}" data-p="${p+1}" style="--c:var(--c${b})">`
+  + `<i>${b}</i><b></b><span class="lo" hidden></span></span>`;
 const xchip = x =>
   `<span class="chip x x-${x.id}"><i>${x.start}</i><b>${x.label}</b></span>`;
 const etchip = b =>
@@ -1097,8 +1107,12 @@ function allSeries(){
   const out = [];
   ORDER.forEach(n => {
     if (!nameOf(n)) return;
-    out.push({key:"b"+n, name:nameOf(n), block:n, loc:locOf(n)});
-    if (extOn(n)) out.push({key:"e"+n, name:extName(n), etBlock:n, loc:locOf(n)});
+    // `name` labels the series and its file; `sum` titles the events themselves,
+    // so the block number rides along without cluttering calendar or file names.
+    out.push({key:"b"+n, name:nameOf(n), sum:`${nameOf(n)} (block ${n})`,
+              block:n, loc:locOf(n)});
+    if (extOn(n)) out.push({key:"e"+n, name:extName(n), sum:`${extName(n)} (block ${n})`,
+                            etBlock:n, loc:locOf(n)});
   });
   EXTRAS.forEach(x => { if (state.extras[x.id]) out.push({key:x.id, name:x.label, x}); });
   // All duties travel together: they're one calendar, each event titled its own duty.
@@ -1143,7 +1157,7 @@ function buildICS(list, calName){
         `DTSTAMP:${now}`,
         `DTSTART:${at(ev.k, ev.start)}`,
         `DTEND:${at(ev.k, ev.end)}`,
-        `SUMMARY:${ics(ev.sum || s.name)}`,
+        `SUMMARY:${ics(ev.sum || s.sum || s.name)}`,
         ...(where ? [`LOCATION:${ics(where)}`] : []),
         `DESCRIPTION:${ics(ev.desc)}`,
         "END:VEVENT");

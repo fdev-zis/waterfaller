@@ -45,8 +45,8 @@ flagged in the sidebar instead.
 ## The views
 
 - **Calendar** — every month, Monday to Friday, each school day showing its rotation
-  number and your lessons in period order. Breaks and days marked 0 are labelled in
-  place. Click a day to see its times.
+  number and your lessons in period order, each tagged with its block number. Breaks
+  and days marked 0 are labelled in place. Click a day to see its times.
 - **8-day cycle** — the rotation as a grid, showing each course sliding one period
   earlier each time it comes round, with a lesson count for the year.
 - **Print** — one month per page, with the controls stripped out.
