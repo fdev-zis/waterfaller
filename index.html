@@ -317,13 +317,57 @@ dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-co
 }
 #toast.on{opacity:1;transform:translate(-50%,0)}
 
+/* ---------- print: one month per page ----------
+   Weekends aren't drawn, and 31 days never reach into a sixth Mon–Fri week, so
+   a month is always five rows at most. Capping each row well under a fifth of
+   the page makes overflow arithmetically impossible, which lets names wrap as
+   far as they like inside a cell instead of being clamped. */
+@page{margin:10mm}
 @media print{
-  header,aside,.mnav,#cycle,#next{display:none!important}
+  /* Never print the dark palette: it would come out as a black page. */
+  :root{
+    --bg:#fff; --panel:#fff; --line:#c9ced6; --fg:#111; --muted:#555;
+    --accent:#2b5fd9; --accent-soft:#e9efff;
+  }
+  body{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  header,aside,.mnav,#cycle,#next,#toast,dialog{display:none!important}
   .layout{display:block;padding:0}
   .card{border:0}
-  .mhead{position:static;backdrop-filter:none}
-  .cell{break-inside:avoid}
-  .month{break-after:page}
+  /* The cycle tab hides the calendar inline, so force it back for printing. */
+  #calendar{display:block!important;margin-top:0!important}
+  .body{padding:0}
+
+  .month{margin:0;break-inside:avoid;break-after:page}
+  .month:last-child{break-after:auto}
+  .mhead{position:static;backdrop-filter:none;padding:0 0 3px;margin-bottom:3px}
+  .mhead h3{font-size:12px}
+  .mhead .mi{font-size:8.5px}
+
+  .grid{gap:1.5mm}
+  .wd{font-size:8px;padding:0 0 1px 3px}
+  /* Five rows at 46mm plus the headers and gaps come to roughly 246mm, inside
+     both A4 and US Letter once the 10mm page margins are taken off. */
+  .cell{
+    min-height:32mm;max-height:46mm;overflow:hidden;
+    padding:3px 4px;gap:2px;border-radius:5px;break-inside:avoid;
+  }
+  .cell.off,.cell.blank{max-height:none}
+  .ch{gap:4px}
+  .dn{font-size:9.5px}
+  .badge{width:15px;height:15px;font-size:8.5px}
+  .cell.today{outline-width:1.5px}
+
+  .chips{gap:1.5px}
+  .chip{
+    font-size:8.5px;line-height:1.25;gap:4px;
+    padding:1px 4px;border-radius:4px;border-left-width:2px;
+  }
+  .chip i{font-size:7px}
+  .chip .lo{font-size:7px;padding:0 2px}
+  /* Names wrap onto as many lines as they need — the cell's own cap is what
+     holds the page, so nothing is shortened until a day is genuinely full. */
+  .lab{font-size:8px}
+  .note{font-size:7.5px;padding-top:2px}
 }
 </style>
 </head>

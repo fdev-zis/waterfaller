@@ -49,7 +49,10 @@ flagged in the sidebar instead.
   and days marked 0 are labelled in place. Click a day to see its times.
 - **8-day cycle** — the rotation as a grid, showing each course sliding one period
   earlier each time it comes round, with a lesson count for the year.
-- **Print** — one month per page, with the controls stripped out.
+- **Print** — exactly one month per page, with the controls stripped out. Everything
+  scales down to fit and long course names wrap over as many lines as they need; only a
+  genuinely full day gets trimmed, rather than spilling onto a second page. Print in
+  portrait.
 
 ## Exporting to your calendar
 
