@@ -15,6 +15,10 @@ offline, and everything you enter stays in your own browser.
 stay off the calendar. They're grouped odd and even because a day only ever draws from
 one group, starting at the block its number names.
 
+**Room** is optional, sits under the course name, and follows that block wherever it
+appears — on the calendar, in a day's detail, and as the location on every exported
+event. Duties carry their own location automatically.
+
 **ET** adds a separate Extended Time slot before the day's first lesson. It can only
 fall on days that open with that block, and never on a Wednesday.
 

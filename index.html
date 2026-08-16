@@ -80,25 +80,36 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 .body{padding:12px 14px}
 
 /* ---------- block editor ---------- */
-.brow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+/* Two rows per block so the course name keeps the full width; the number badge
+   and the colour well span both. */
+.brow{
+  display:grid;gap:5px 8px;align-items:center;margin-bottom:9px;
+  grid-template-columns:22px auto minmax(0,1fr) 24px;
+  grid-template-areas:"bn name name color" "bn loc et color";
+}
 .brow:last-child{margin-bottom:0}
 .bn{
-  width:22px;height:22px;flex:none;border-radius:6px;display:grid;place-items:center;
+  grid-area:bn;
+  width:22px;height:22px;border-radius:6px;display:grid;place-items:center;
   font-size:11px;font-weight:700;color:#fff;background:var(--c);
 }
 .brow input[type=text]{
-  flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);
+  min-width:0;border:1px solid var(--line);background:var(--bg);
   border-radius:7px;padding:5px 8px;font-size:13px;
 }
+.brow .bname{grid-area:name}
+.brow .bloc{grid-area:loc;width:88px;padding:3px 7px;font-size:11.5px}
 .brow input[type=text]:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
 .brow .etl{
-  display:flex;align-items:center;gap:3px;flex:none;cursor:pointer;user-select:none;
+  grid-area:et;
+  display:flex;align-items:center;gap:3px;cursor:pointer;user-select:none;
   font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--muted);
 }
 .brow .etl input{margin:0;width:13px;height:13px;accent-color:var(--accent)}
 .brow .etl:has(input:checked){color:var(--accent)}
 .brow input[type=color]{
-  width:24px;height:24px;flex:none;padding:0;border:1px solid var(--line);
+  grid-area:color;
+  width:24px;height:24px;padding:0;border:1px solid var(--line);
   border-radius:6px;background:none;
 }
 .hint{color:var(--muted);font-size:11.5px;margin:10px 0 0;line-height:1.45}
@@ -181,9 +192,16 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
   border-left:3px solid var(--c);
 }
 .chip i{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted);flex:none}
-.chip b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip b{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip b.empty{color:var(--muted);font-style:italic;font-weight:400}
 .chip[hidden]{display:none}
+/* Room codes ride along with the course, kept visually secondary. */
+.chip .lo{
+  flex:none;font-size:9.5px;font-weight:600;color:var(--muted);
+  padding:0 4px;border-radius:3px;font-variant-numeric:tabular-nums;
+  background:color-mix(in srgb,var(--fg) 8%,transparent);
+}
+.chip .lo[hidden]{display:none}
 /* Extended time is the same course, so it keeps the colour but loses the fill. */
 .chip.et{background:none;border-left-style:dashed}
 .chip.et i{color:var(--c)}
@@ -214,12 +232,20 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 }
 .mhead h3{margin:0;font-size:14.5px;letter-spacing:-.2px}
 .mhead .mi{font-size:11.5px;color:var(--muted)}
-.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+/* minmax(0,1fr) rather than 1fr: a bare 1fr floors each track at its content's
+   min width, so a long course name would widen that weekday's column and leave
+   the five days uneven. Fixing the floor at 0 keeps every day the same width. */
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .wd{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 0 2px 4px}
 .cell{
   background:var(--panel);border:1px solid var(--line);border-radius:8px;
   padding:6px 7px;min-height:78px;display:flex;flex-direction:column;gap:5px;
 }
+/* Cells being equal width, text wraps instead of truncating, so nothing is
+   hidden; the grid then stretches every cell in a row to the tallest. */
+.cell .chip{align-items:flex-start}
+.cell .chip i{padding-top:1px}
+.cell .chip b{white-space:normal;overflow:visible;overflow-wrap:anywhere}
 .cell.blank{background:none;border:0;min-height:0}
 .cell.school{cursor:pointer;transition:border-color .12s,transform .12s}
 .cell.school:hover{border-color:var(--accent);transform:translateY(-1px)}
@@ -271,6 +297,7 @@ dialog .pr .nm.empty{color:var(--muted);font-style:italic;border-left-color:var(
 dialog .pr .nm.extra{color:var(--muted);border-left-style:dashed}
 dialog .pr .nm.et{border-left-style:dashed}
 dialog .pr .nm.duty{border-left-style:dotted;border-left-color:var(--muted)}
+dialog .pr .nm .lo{display:block;color:var(--muted);font-size:11px;margin-top:1px}
 dialog .lunch{margin:0 0 0 98px}
 dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-content:flex-end}
 #exp{width:min(400px,92vw)}
@@ -319,9 +346,10 @@ dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-co
         <div id="blocks"></div>
         <p class="hint">
           A day draws from one group only, starting at the block its number names.
-          Leave a block empty and it stays off the calendar. <b>ET</b> adds a separate
-          Extended Time slot before the day's first lesson, so it only ever falls on
-          days that open with that block.
+          Leave a block empty and it stays off the calendar. <b>Room</b> is optional and
+          travels with every lesson of that block, including into the export.
+          <b>ET</b> adds a separate Extended Time slot before the day's first lesson, so
+          it only ever falls on days that open with that block.
         </p>
       </div>
     </section>
@@ -574,7 +602,7 @@ function load(){
   try {
     const s = JSON.parse(localStorage.getItem(SAVE));
     if (s?.blocks?.length === 8 && s?.periods?.std?.length === 4) {
-      s.blocks = s.blocks.map(b => ({ext:false, ...b}));
+      s.blocks = s.blocks.map(b => ({ext:false, loc:"", ...b}));
       s.duties = (s.duties || []).filter(a => dutyById(a.id)).slice(0, MAX_DUTIES);
       const extras = {...DEF_EXTRAS, ...s.extras};
       // An earlier version had one switch per group; fold them back into one.
@@ -585,7 +613,7 @@ function load(){
     }
   } catch {}
   return {
-    blocks: PALETTE.map(color => ({name:"", color, ext:false})),
+    blocks: PALETTE.map(color => ({name:"", color, ext:false, loc:""})),
     periods: {std: times(DEF_PERIODS.std), wed: times(DEF_PERIODS.wed)},
     extras: {...DEF_EXTRAS},
     duties: [],
@@ -596,6 +624,7 @@ const nameOf = b => state.blocks[b-1].name;
 // Does rotation day n contain at least one named course?
 const taught = n => blocksFor(n).some(nameOf);
 // Extended time is on for this block, and its name with the suffix.
+const locOf = b => state.blocks[b-1].loc;
 const extOn = b => !!nameOf(b) && !!state.blocks[b-1].ext;
 const extName = b => nameOf(b) + EXT.suffix;
 // Days that open with block b and run the standard clock.
@@ -668,7 +697,9 @@ $("#blocks").innerHTML = ORDER.map((n,i) => {
         : i === 4 ? `<div class="grp">Even days</div>` : "") + `
   <div class="brow">
     <span class="bn" style="--c:var(--c${n})">${n}</span>
-    <input type="text" data-n="${n-1}" placeholder="Block ${n} — course name" value="${esc(b.name)}">
+    <input type="text" class="bname" data-n="${n-1}" placeholder="Block ${n} — course name" value="${esc(b.name)}">
+    <input type="text" class="bloc" data-l="${n-1}" placeholder="Room" value="${esc(b.loc)}"
+           title="Room or location, exported with every lesson of this block">
     <label class="etl" title="Extended Time, ${EXT.start}–${EXT.end}, on days this block opens (not Wednesdays)">
       <input type="checkbox" data-e="${n-1}" ${b.ext ? "checked" : ""}>ET</label>
     <input type="color" data-c="${n-1}" value="${b.color}" title="Colour">
@@ -715,8 +746,9 @@ $("#extras").addEventListener("change", e => {
 });
 
 $("#blocks").addEventListener("input", e => {
-  const {n,c,e:x} = e.target.dataset;
+  const {n,c,l,e:x} = e.target.dataset;
   if (n !== undefined) state.blocks[n].name = e.target.value;
+  else if (l !== undefined) state.blocks[l].loc = e.target.value;
   else if (c !== undefined) state.blocks[c].color = e.target.value;
   else {
     // Extended time starts at 08:30, inside every morning duty slot.
@@ -804,7 +836,7 @@ $("#periods").addEventListener("input", e => {
 });
 
 $("#clear").onclick = () => {
-  state.blocks.forEach(b => b.name = "");
+  state.blocks.forEach(b => { b.name = ""; b.loc = ""; });
   document.querySelectorAll("#blocks input[type=text]").forEach(i => i.value = "");
   refresh();
 };
@@ -822,16 +854,18 @@ function refresh(hard){
    drop out of the calendar entirely; only the cycle reference (.ph) keeps a
    placeholder, so its grid doesn't fill with holes. */
 function paintBlocks(){
-  state.blocks.forEach(({name,color,ext}, i) => {
+  state.blocks.forEach(({name,color,ext,loc}, i) => {
     const n = i + 1;
     document.documentElement.style.setProperty(`--c${n}`, color);
     document.querySelectorAll(`.chip[data-b="${n}"]`).forEach(el => {
       const et = el.classList.contains("et");
       el.hidden = et ? !(name && ext) : (!name && !el.classList.contains("ph"));
+      const room = el.querySelector(".lo");
+      if (room) { room.textContent = loc; room.hidden = !loc; }
       const t = el.querySelector("b");
       t.textContent = name || "Block " + n;
-      t.title = et ? name + EXT.suffix + ` · ${EXT.start}–${EXT.end}`
-                   : (name || "Block " + n);
+      t.title = (et ? name + EXT.suffix + ` · ${EXT.start}–${EXT.end}`
+                    : (name || "Block " + n)) + (loc ? ` · ${loc}` : "");
       t.classList.toggle("empty", !name);
     });
   });
@@ -885,11 +919,13 @@ function renderStats(){
    4. CALENDAR
    ============================================================ */
 const chip = (b,p) =>
-  `<span class="chip" data-b="${b}" style="--c:var(--c${b})"><i>P${p+1}</i><b></b></span>`;
+  `<span class="chip" data-b="${b}" style="--c:var(--c${b})">`
+  + `<i>P${p+1}</i><b></b><span class="lo" hidden></span></span>`;
 const xchip = x =>
   `<span class="chip x x-${x.id}"><i>${x.start}</i><b>${x.label}</b></span>`;
 const etchip = b =>
-  `<span class="chip et" data-b="${b}" style="--c:var(--c${b})"><i>ET</i><b></b></span>`;
+  `<span class="chip et" data-b="${b}" style="--c:var(--c${b})">`
+  + `<i>ET</i><b></b><span class="lo" hidden></span></span>`;
 const dchip = ({d,start,end}) =>
   `<span class="chip du" title="${esc(`${d.type} — ${d.where} · ${start}–${end}`)}">`
   + `<i>${start}</i><b>${esc(d.where)}</b></span>`;
@@ -990,16 +1026,16 @@ $("#months").addEventListener("click", e => {
   const duties = dutiesOn(k, info.n);
   const rows = [
     ...blocksFor(info.n).map((b,p) => ({
-      start: ps[p].start, end: ps[p].end,
+      start: ps[p].start, end: ps[p].end, loc: nameOf(b) ? locOf(b) : "",
       name: nameOf(b) || "Free", cls: nameOf(b) ? "" : "empty", c: `var(--c${b})`,
     })),
     ...extrasOn(k, info.n).map(x =>
       ({start: x.start, end: x.end, name: x.label, cls: "extra"})),
     ...(setOf(k) !== "wed" && extOn(info.n)
       ? [{start: EXT.start, end: EXT.end, name: extName(info.n),
-          cls: "et", c: `var(--c${info.n})`}] : []),
+          loc: locOf(info.n), cls: "et", c: `var(--c${info.n})`}] : []),
     ...duties.map(({d,start,end}) =>
-      ({start, end, name: `${d.type} — ${d.where}`, cls: "duty"})),
+      ({start, end, name: d.type, loc: d.where, cls: "duty"})),
     freeLunch(ps, duties),
   ].sort((a,b) => a.start.localeCompare(b.start));
 
@@ -1008,7 +1044,8 @@ $("#months").addEventListener("click", e => {
         : "no lunch break — both halves on duty"}</div>`
     : `<div class="pr" style="--c:${r.c || "var(--line)"}">
          <span class="tm">${r.start}–${r.end}</span>
-         <span class="nm ${r.cls}">${esc(r.name)}</span>
+         <span class="nm ${r.cls}">${esc(r.name)}${
+           r.loc ? `<span class="lo">${esc(r.loc)}</span>` : ""}</span>
        </div>`).join("");
   dlg.showModal();
 });
@@ -1041,7 +1078,8 @@ function renderCycle(){
   paintBlocks(); paintTimes();
 }
 const chipInline = b =>
-  `<span class="chip ph" data-b="${b}" style="--c:var(--c${b})"><b></b></span>`;
+  `<span class="chip ph" data-b="${b}" style="--c:var(--c${b})">`
+  + `<b></b><span class="lo" hidden></span></span>`;
 
 /* ============================================================
    6. TABS + ICS EXPORT
@@ -1059,8 +1097,8 @@ function allSeries(){
   const out = [];
   ORDER.forEach(n => {
     if (!nameOf(n)) return;
-    out.push({key:"b"+n, name:nameOf(n), block:n});
-    if (extOn(n)) out.push({key:"e"+n, name:extName(n), etBlock:n});
+    out.push({key:"b"+n, name:nameOf(n), block:n, loc:locOf(n)});
+    if (extOn(n)) out.push({key:"e"+n, name:extName(n), etBlock:n, loc:locOf(n)});
   });
   EXTRAS.forEach(x => { if (state.extras[x.id]) out.push({key:x.id, name:x.label, x}); });
   // All duties travel together: they're one calendar, each event titled its own duty.
@@ -1073,7 +1111,7 @@ function eventsOf(s){
     const d = dutyById(a.id);
     return dutyDates(a).map(([k,e]) => {
       const [start,end] = dutyTimes(d,k);
-      return {k, start, end, uid:d.id, sum:`${d.type} — ${d.where}`,
+      return {k, start, end, uid:d.id, sum:`${d.type} — ${d.where}`, loc:d.where,
               desc:`Day ${e.n} · ${DUTY_SLOTS[d.slot].when.toLowerCase()}`};
     });
   });
@@ -1098,15 +1136,18 @@ function buildICS(list, calName){
   const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Waterfaller//EN",
                  "CALSCALE:GREGORIAN",`X-WR-CALNAME:${ics(calName)}`];
   for (const s of list)
-    for (const ev of eventsOf(s))
+    for (const ev of eventsOf(s)) {
+      const where = ev.loc ?? s.loc;
       lines.push("BEGIN:VEVENT",
         `UID:wf-${ev.k}-${s.key}-${ev.uid}@waterfaller`,
         `DTSTAMP:${now}`,
         `DTSTART:${at(ev.k, ev.start)}`,
         `DTEND:${at(ev.k, ev.end)}`,
         `SUMMARY:${ics(ev.sum || s.name)}`,
+        ...(where ? [`LOCATION:${ics(where)}`] : []),
         `DESCRIPTION:${ics(ev.desc)}`,
         "END:VEVENT");
+    }
   lines.push("END:VCALENDAR");
   return lines.map(fold).join("\r\n");
 }
