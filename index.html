@@ -213,7 +213,8 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 .chip.x b{font-weight:400}
 .chip.x i{font-weight:500;opacity:.75}
 .off-fac .x-fac,.off-flex .x-flex,.off-adv6 .x-adv6,.off-adv11 .x-adv11,
-.only-teach [data-day]:not(.taught) .chip.x{display:none}
+.only-teach [data-day]:not(.taught) .chip.x,
+.has-et .x-adv6{display:none}
 /* A duty is mine but not a lesson: neutral fill, dotted edge. */
 .chip.du{background:color-mix(in srgb,var(--fg) 6%,transparent);border-left:3px dotted var(--muted)}
 .chip.du b{font-weight:400}
@@ -636,6 +637,8 @@ const DAYS = new Map();
   }
 })();
 const SCHOOL = [...DAYS].filter(([,v]) => v.kind === "school");
+// School days 1–8 plus day 0 (in session, no rotation). Closures have no number.
+const NUMBERED = [...DAYS].filter(([,v]) => v.n !== undefined);
 const lessonsFor = b => SCHOOL.filter(([,v]) => blocksFor(v.n).includes(b)).length;
 
 /* ============================================================
@@ -674,6 +677,8 @@ const taught = n => blocksFor(n).some(nameOf);
 const locOf = b => state.blocks[b-1].loc;
 const extOn = b => !!nameOf(b) && !!state.blocks[b-1].ext;
 const extName = b => nameOf(b) + EXT.suffix;
+// Extended time only on the opening block, never on a Wednesday late start.
+const etOnDay = (k,n) => extOn(n) && setOf(k) !== "wed";
 // Days that open with block b and run the standard clock.
 const extDays = b => SCHOOL.filter(([k,e]) => e.n === b && setOf(k) !== "wed");
 
@@ -727,10 +732,12 @@ function freeLunch(ps, duties){
                    : {lunch:true, start:hhmm(a)};
 }
 // Extras switched on and due on this date. They all drop out when "only on days
-// I teach" is set and none of that day's blocks are named.
+// I teach" is set and none of that day's blocks are named. Advisory 6–10 overlaps
+// Extended Time (08:30–09:00), so it never shares a morning with ET.
 const extrasOn = (k,n) => EXTRAS.filter(x => state.extras[x.id]
   && x.days.includes(parse(k).getUTCDay())
-  && !(state.extras.onlyTeach && !taught(n)));
+  && !(state.extras.onlyTeach && !taught(n))
+  && !(x.id === "adv6" && etOnDay(k,n)));
 
 /* ============================================================
    3. SIDEBAR
@@ -922,11 +929,15 @@ function paintBlocks(){
     });
   });
   // Mark every day container whose rotation day holds a course of mine, which
-  // is what the "only when teaching" rule keys off in CSS.
+  // is what the "only when teaching" rule keys off in CSS. Days with Extended
+  // Time also hide Advisory 6–10, which would overlap 08:30–09:00.
   for (let n = 1; n <= 8; n++) {
     const on = taught(n);
-    document.querySelectorAll(`[data-day="${n}"]`)
-      .forEach(el => el.classList.toggle("taught", on));
+    document.querySelectorAll(`[data-day="${n}"]`).forEach(el => {
+      el.classList.toggle("taught", on);
+      const k = el.dataset.k;
+      el.classList.toggle("has-et", !!k && etOnDay(k, n));
+    });
   }
 }
 /* Extras are always in the DOM; the toggles only flip root classes, so
@@ -1065,7 +1076,7 @@ function renderNext(){
     </div>
     ${empty
       ? `<div class="lab">Nothing named for ${e.n%2 ? "odd" : "even"} days yet.</div>`
-      : `<div class="chips" data-day="${e.n}">${dayChips(k, e.n)}</div>`}`;
+      : `<div class="chips" data-day="${e.n}" data-k="${k}">${dayChips(k, e.n)}</div>`}`;
 }
 
 /* ---- day detail ---- */
@@ -1148,7 +1159,12 @@ document.querySelectorAll(".tabs button").forEach(btn => btn.onclick = () => {
 
 /* ---- one exportable series per course and per switched-on commitment ---- */
 function allSeries(){
-  const out = [];
+  const out = [
+    // Rotation numbers as free all-day labels, so they can be exported on their
+    // own without occupying a timed slot or marking the day busy.
+    {key:"odd",  name:"Odd days",  days:true, odd:true},
+    {key:"even", name:"Even days", days:true, odd:false},
+  ];
   ORDER.forEach(n => {
     if (!nameOf(n)) return;
     // `name` labels the series and its file; `sum` titles the events themselves,
@@ -1165,6 +1181,12 @@ function allSeries(){
 }
 
 function eventsOf(s){
+  if (s.days) return NUMBERED
+    .filter(([,e]) => (e.n % 2 === 1) === s.odd)
+    .map(([k,e]) => ({
+      k, allDay:true, uid:"n", sum:String(e.n),
+      desc: e.label ? `Day ${e.n} · ${e.label}` : `Day ${e.n}`,
+    }));
   if (s.duties) return state.duties.flatMap(a => {
     const d = dutyById(a.id);
     return dutyDates(a).map(([k,e]) => {
@@ -1191,16 +1213,24 @@ function eventsOf(s){
 function buildICS(list, calName){
   const now = new Date().toISOString().replace(/[-:]|\.\d{3}/g,"");
   const at = (k,s) => k.replace(/-/g,"") + "T" + s.replace(":","") + "00";
+  const ymd = k => k.replace(/-/g,"");
+  const next = k => { const d = parse(k); d.setUTCDate(d.getUTCDate()+1); return key(d); };
   const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Waterfaller//EN",
                  "CALSCALE:GREGORIAN",`X-WR-CALNAME:${ics(calName)}`];
   for (const s of list)
     for (const ev of eventsOf(s)) {
       const where = ev.loc ?? s.loc;
+      const times = ev.allDay
+        ? [`DTSTART;VALUE=DATE:${ymd(ev.k)}`,
+           `DTEND;VALUE=DATE:${ymd(next(ev.k))}`,
+           "TRANSP:TRANSPARENT",
+           "X-MICROSOFT-CDO-BUSYSTATUS:FREE"]
+        : [`DTSTART:${at(ev.k, ev.start)}`,
+           `DTEND:${at(ev.k, ev.end)}`];
       lines.push("BEGIN:VEVENT",
         `UID:wf-${ev.k}-${s.key}-${ev.uid}@waterfaller`,
         `DTSTAMP:${now}`,
-        `DTSTART:${at(ev.k, ev.start)}`,
-        `DTEND:${at(ev.k, ev.end)}`,
+        ...times,
         `SUMMARY:${ics(ev.sum || s.sum || s.name)}`,
         ...(where ? [`LOCATION:${ics(where)}`] : []),
         `DESCRIPTION:${ics(ev.desc)}`,

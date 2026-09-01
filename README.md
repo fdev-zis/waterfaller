@@ -20,7 +20,8 @@ appears — on the calendar, in a day's detail, and as the location on every exp
 event. Duties carry their own location automatically.
 
 **ET** adds a separate Extended Time slot before the day's first lesson. It can only
-fall on days that open with that block, and never on a Wednesday.
+fall on days that open with that block, and never on a Wednesday. Advisory 6–10
+overlaps that slot, so it is omitted on those mornings; Advisory 11–12 is unaffected.
 
 **Period times** are editable, with a second set for the Wednesday late start. Lunch is
 worked out from the gap between periods 2 and 3.
@@ -57,8 +58,11 @@ flagged in the sidebar instead.
 ## Exporting to your calendar
 
 **Export** lets you pick which courses and commitments to include, and whether to get
-one combined file or one file per item. Duties travel together as a single *Duties*
-calendar, each event titled with its own duty and location.
+one combined file or one file per item. **Odd days** and **Even days** are always
+available, even with no courses named: they are all-day events titled with the rotation
+number (0–8, with day 0 on even), marked free so they label the day without blocking it.
+Duties travel together as a single *Duties* calendar, each event titled with its own duty
+and location.
 
 An `.ics` file always imports into exactly one calendar, so to switch subjects on and
 off independently in Google Calendar you need one file each:
