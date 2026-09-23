@@ -1240,12 +1240,19 @@ function buildICS(list, calName){
   return lines.map(fold).join("\r\n");
 }
 
-const ics = s => String(s).replace(/([,;\\])/g,"\\$1");
+/* Google Calendar's importer can read the file as Latin-1, which turns every
+   UTF-8 character into mojibake ("—" shows as "â" plus boxes). Plain ASCII
+   reads the same under any charset, so the export never leaves it. */
+const ASCII = {"—":"-", "–":"-", "·":"-", "…":"...", "‘":"'", "’":"'", "“":'"', "”":'"',
+               "ä":"ae", "ö":"oe", "ü":"ue", "Ä":"Ae", "Ö":"Oe", "Ü":"Ue", "ß":"ss"};
+const ascii = s => s.replace(/[^\x00-\x7f]/g, c =>
+  ASCII[c] ?? c.normalize("NFD").replace(/[^\x00-\x7f]/g, ""));
+const ics = s => ascii(String(s)).replace(/([,;\\])/g,"\\$1");
 const fold = l => l.length <= 74 ? l : l.match(/.{1,74}/g).join("\r\n ");
 
 async function saveFiles(files){
   for (const [name,text] of files) {
-    const url = URL.createObjectURL(new Blob([text], {type:"text/calendar"}));
+    const url = URL.createObjectURL(new Blob([text], {type:"text/calendar;charset=utf-8"}));
     Object.assign(document.createElement("a"), {href:url, download:name}).click();
     // Stagger the files, since browsers drop several fired in the same tick,
     // and let each download start before the blob is released.
