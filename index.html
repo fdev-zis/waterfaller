@@ -117,7 +117,7 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
   font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
   margin:0 0 5px;display:flex;align-items:center;gap:7px;
 }
-.brow+.grp,.prow+.grp,.lunch+.grp{margin-top:11px}
+.brow+.grp,.prow+.grp,.lunch+.grp,.stat+.grp{margin-top:11px}
 .grp::after{content:"";flex:1;height:1px;background:var(--line)}
 .lunch{
   font-size:10.5px;color:var(--muted);margin:0 0 6px 30px;
@@ -176,12 +176,15 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 .stat{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12.5px}
 .stat span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
 .stat+.stat{border-top:1px dashed var(--line)}
+.stat small{color:var(--muted);font-size:11px;margin-left:3px}
 
 /* ---------- next-up ---------- */
 #next{padding:13px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 #next .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 #next .dt{font-size:15px;font-weight:600}
 #next .chips{display:flex;flex-direction:row;gap:6px;flex-wrap:wrap;flex:1;min-width:220px}
+#next .meta{margin-left:auto;display:flex;gap:22px;text-align:right}
+#next .meta small{font-size:12px;font-weight:400;color:var(--muted)}
 
 /* ---------- chips ---------- */
 .chips{display:flex;flex-direction:column;gap:3px}
@@ -197,6 +200,8 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 .chip[data-b] i{color:var(--c)}
 .chip b{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip b.empty{color:var(--muted);font-style:italic;font-weight:400}
+/* The lesson's running number within its block, for lesson planning. */
+.chip .no{flex:none;font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .chip[hidden]{display:none}
 /* Room codes ride along with the course, kept visually secondary. */
 .chip .lo{
@@ -270,6 +275,8 @@ aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
   padding-top:4px;border-top:1px dashed var(--line);
 }
 .cell.today{outline:2px solid var(--accent);outline-offset:1px}
+.cell.past{opacity:.5}
+.cell.past:hover{opacity:1}
 
 /* ---------- cycle view ---------- */
 #cycle .body{overflow-x:auto}
@@ -357,6 +364,8 @@ dialog form{padding:0 16px 14px;text-align:right;display:flex;gap:8px;justify-co
   .dn{font-size:9.5px}
   .badge{width:15px;height:15px;font-size:8.5px}
   .cell.today{outline-width:1.5px}
+  .cell.past{opacity:1}
+  .chip .no{font-size:7px}
 
   .chips{gap:1.5px}
   .chip{
@@ -640,6 +649,11 @@ const SCHOOL = [...DAYS].filter(([,v]) => v.kind === "school");
 // School days 1–8 plus day 0 (in session, no rotation). Closures have no number.
 const NUMBERED = [...DAYS].filter(([,v]) => v.n !== undefined);
 const lessonsFor = b => SCHOOL.filter(([,v]) => blocksFor(v.n).includes(b)).length;
+// Each block's lessons numbered through the year: LESSON_NO.get(date)[block],
+// out of LESSON_TOTAL[block].
+const LESSON_NO = new Map(), LESSON_TOTAL = Array(9).fill(0);
+for (const [k,v] of SCHOOL)
+  LESSON_NO.set(k, Object.fromEntries(blocksFor(v.n).map(b => [b, ++LESSON_TOTAL[b]])));
 
 /* ============================================================
    2. STATE
@@ -917,12 +931,13 @@ function paintBlocks(){
       const room = el.querySelector(".lo");
       if (room) { room.textContent = loc; room.hidden = !loc; }
       const t = el.querySelector("b");
-      const p = el.dataset.p;
+      const {p, no} = el.dataset;
       t.textContent = name || "Block " + n;
       // The period left the chip face with the block number, so keep it here.
       t.title = [
         et ? name + EXT.suffix + ` · ${EXT.start}–${EXT.end}` : (name || "Block " + n),
-        "block " + n + (p ? `, period ${p}` : ""),
+        "block " + n + (p ? `, period ${p}` : "")
+          + (no ? `, lesson ${no} of ${LESSON_TOTAL[n]}` : ""),
         loc,
       ].filter(Boolean).join(" · ");
       t.classList.toggle("empty", !name);
@@ -967,6 +982,7 @@ function renderStats(){
     ? String(Math.min(...a)) : Math.min(...a) + "–" + Math.max(...a);
   $("#stats").innerHTML = [
     ["Teaching days", SCHOOL.length],
+    ["Teaching days left", daysLeft()],
     ["Days marked 0", zeros],
     ["Full 8-day cycles", Math.floor(SCHOOL.length / 8)],
     ["Each day recurs", span(recur) + "×"],
@@ -975,7 +991,20 @@ function renderStats(){
     ["Extra events", allSeries().filter(s => s.x)
       .reduce((t,s) => t + eventsOf(s).length, 0)],
     ["Duty slots", state.duties.reduce((t,a) => t + dutyDates(a).length, 0)],
-  ].map(([a,b]) => `<div class="stat"><span>${a}</span><span>${b}</span></div>`).join("");
+  ].map(stat).join("") + lessonsLeft();
+}
+const stat = ([a,b]) => `<div class="stat"><span>${a}</span><span>${b}</span></div>`;
+
+// What's still ahead for each named course, today included.
+function lessonsLeft(){
+  const t = today();
+  const rows = ORDER.filter(nameOf).flatMap(n => [
+    [`${esc(nameOf(n))} <small>block ${n}</small>`,
+     `${SCHOOL.filter(([k,v]) => k >= t && blocksFor(v.n).includes(n)).length} / ${LESSON_TOTAL[n]}`],
+    ...(extOn(n) ? [[`${esc(nameOf(n))} <small>Extended Time</small>`,
+      `${extDays(n).filter(([k]) => k >= t).length} / ${extDays(n).length}`]] : []),
+  ]);
+  return rows.length ? `<div class="grp">Lessons left</div>` + rows.map(stat).join("") : "";
 }
 
 /* ============================================================
@@ -983,9 +1012,9 @@ function renderStats(){
    ============================================================ */
 // Chips are tagged with the block they are, not the period they sit in: the
 // period is already implied by the chip's place in the day's running order.
-const chip = (b,p) =>
-  `<span class="chip" data-b="${b}" data-p="${p+1}" style="--c:var(--c${b})">`
-  + `<i>${b}</i><b></b><span class="lo" hidden></span></span>`;
+const chip = (b,p,no) =>
+  `<span class="chip" data-b="${b}" data-p="${p+1}" data-no="${no}" style="--c:var(--c${b})">`
+  + `<i>${b}</i><b></b><span class="no">#${no}</span><span class="lo" hidden></span></span>`;
 const xchip = x =>
   `<span class="chip x x-${x.id}"><i>${x.start}</i><b>${x.label}</b></span>`;
 const etchip = b =>
@@ -1000,9 +1029,9 @@ const dchip = ({d,start,end}) =>
    their toggle; CSS decides whether they show. Duties are few and change rarely,
    so they're emitted only when actually assigned. */
 function dayChips(k,n){
-  const ps = sched(k), wd = parse(k).getUTCDay();
+  const ps = sched(k), wd = parse(k).getUTCDay(), no = LESSON_NO.get(k);
   return [
-    ...blocksFor(n).map((b,p) => ({t: ps[p].start, html: chip(b,p)})),
+    ...blocksFor(n).map((b,p) => ({t: ps[p].start, html: chip(b,p,no[b])})),
     ...EXTRAS.filter(x => x.days.includes(wd)).map(x => ({t: x.start, html: xchip(x)})),
     ...(wd === 3 ? [] : [{t: EXT.start, html: etchip(n)}]),
     ...dutiesOn(k,n).map(u => ({t: u.start, html: dchip(u)})),
@@ -1010,7 +1039,7 @@ function dayChips(k,n){
 }
 
 function renderCalendar(){
-  const months = [];
+  const months = [], t = today();
   for (let d = parse(YEAR.from); key(d) <= YEAR.to; d.setUTCMonth(d.getUTCMonth()+1))
     months.push([d.getUTCFullYear(), d.getUTCMonth()]);
 
@@ -1028,6 +1057,7 @@ function renderCalendar(){
       if (!cells.length) cells.push(...Array((wd+6)%7).fill(`<div class="cell blank"></div>`));
 
       const k = key(d), e = DAYS.get(k) || {kind:"closed", label:""};
+      const past = k < t ? " past" : "";
       const head = badge =>
         `<div class="ch"><span class="dn">${day}</span><span class="sp"></span>${badge}</div>`;
       const dot = n => `<span class="badge ${n%2 ? "odd" : "even"}">${n}</span>`;
@@ -1035,13 +1065,13 @@ function renderCalendar(){
 
       if (e.kind === "school") {
         teaching++;
-        cells.push(`<div class="cell school" data-k="${k}" data-day="${e.n}">${head(dot(e.n))}`
+        cells.push(`<div class="cell school${past}" data-k="${k}" data-day="${e.n}">${head(dot(e.n))}`
           + `<div class="chips">${dayChips(k, e.n)}</div>${note}</div>`);
       } else if (e.kind === "zero") {
-        cells.push(`<div class="cell">${head(dot(0))}`
+        cells.push(`<div class="cell${past}">${head(dot(0))}`
           + `<div class="lab">${esc(e.label)}</div>${note}</div>`);
       } else {
-        cells.push(`<div class="cell off">${head("")}`
+        cells.push(`<div class="cell off${past}">${head("")}`
           + `<div class="lab">${esc(e.label)}</div>${note}</div>`);
       }
     }
@@ -1054,7 +1084,14 @@ function renderCalendar(){
       </div></section>`;
   }).join("");
 
-  $(`#months .cell[data-k="${today()}"]`)?.classList.add("today");
+  $(`#months .cell[data-k="${t}"]`)?.classList.add("today");
+}
+
+// Open on the current month, clear of the sticky header. Before or after the
+// year there's no such month, so the page stays at the top.
+function scrollToNow(){
+  const d = parse(today()), m = $(`#m${d.getUTCFullYear()}-${d.getUTCMonth()}`);
+  if (m) scrollTo(0, m.getBoundingClientRect().top + scrollY - $("header").offsetHeight - 8);
 }
 
 $("#mnav").onclick = e => {
@@ -1063,11 +1100,16 @@ $("#mnav").onclick = e => {
 };
 
 /* ---- next / current school day banner ---- */
+// Numbered school days from today on; today still counts until it's over.
+const daysLeft = () => SCHOOL.filter(([k]) => k >= today()).length;
+
 function renderNext(){
   const t = today();
   const hit = SCHOOL.find(([k]) => k >= t);
   if (!hit) { $("#next").innerHTML = `<div class="dt">The school year is over.</div>`; return; }
-  const [k,e] = hit;
+  const [k,e] = hit, left = daysLeft();
+  const brk = YEAR.closures.find(([from]) => from > t);
+  const toBrk = brk && SCHOOL.filter(([d]) => d >= t && d < brk[0]).length;
   const empty = !taught(e.n) && !extrasOn(k, e.n).length && !dutiesOn(k, e.n).length;
   $("#next").innerHTML = `
     <div>
@@ -1076,7 +1118,17 @@ function renderNext(){
     </div>
     ${empty
       ? `<div class="lab">Nothing named for ${e.n%2 ? "odd" : "even"} days yet.</div>`
-      : `<div class="chips" data-day="${e.n}" data-k="${k}">${dayChips(k, e.n)}</div>`}`;
+      : `<div class="chips" data-day="${e.n}" data-k="${k}">${dayChips(k, e.n)}</div>`}
+    <div class="meta">
+      ${brk ? `<div>
+        <div class="lbl">Until ${esc(brk[2])}</div>
+        <div class="dt">${toBrk} <small>teaching day${toBrk === 1 ? "" : "s"} · from ${fmt(brk[0])}</small></div>
+      </div>` : ""}
+      <div>
+        <div class="lbl">Teaching days left</div>
+        <div class="dt">${left} <small>of ${SCHOOL.length}</small></div>
+      </div>
+    </div>`;
 }
 
 /* ---- day detail ---- */
@@ -1088,10 +1140,12 @@ $("#months").addEventListener("click", e => {
   dlg.querySelector(".ds").textContent = (info.n % 2 ? "Odd" : "Even")
     + " rotation from block " + info.n
     + (setOf(k) === "wed" ? " · Wednesday times" : "");
-  const duties = dutiesOn(k, info.n);
+  const duties = dutiesOn(k, info.n), no = LESSON_NO.get(k);
   const rows = [
     ...blocksFor(info.n).map((b,p) => ({
-      start: ps[p].start, end: ps[p].end, loc: nameOf(b) ? locOf(b) : "",
+      start: ps[p].start, end: ps[p].end,
+      loc: nameOf(b) ? [locOf(b), `lesson ${no[b]} of ${LESSON_TOTAL[b]}`]
+        .filter(Boolean).join(" · ") : "",
       name: nameOf(b) || "Free", cls: nameOf(b) ? "" : "empty", c: `var(--c${b})`,
     })),
     ...extrasOn(k, info.n).map(x =>
@@ -1195,9 +1249,9 @@ function eventsOf(s){
               desc:`Day ${e.n} · ${DUTY_SLOTS[d.slot].when.toLowerCase()}`};
     });
   });
-  if (s.etBlock) return extDays(s.etBlock).map(([k,e]) =>
+  if (s.etBlock) return extDays(s.etBlock).map(([k,e],i,all) =>
     ({k, start:EXT.start, end:EXT.end, uid:"et",
-      desc:`Day ${e.n} · block ${s.etBlock} · extended time`}));
+      desc:`Day ${e.n} · block ${s.etBlock} · extended time ${i+1} of ${all.length}`}));
   if (s.x) return SCHOOL
     .filter(([k,e]) => extrasOn(k, e.n).includes(s.x))
     .map(([k,e]) => ({k, start:s.x.start, end:s.x.end, uid:s.x.id, desc:`Day ${e.n}`}));
@@ -1206,7 +1260,8 @@ function eventsOf(s){
     if (p < 0) return [];               // wrong parity: this block doesn't meet
     const ps = sched(k);
     return [{k, start:ps[p].start, end:ps[p].end, uid:"p"+(p+1),
-             desc:`Day ${e.n} · block ${s.block} · period ${p+1}`}];
+             desc:`Day ${e.n} · block ${s.block} · period ${p+1}`
+               + ` · lesson ${LESSON_NO.get(k)[s.block]} of ${LESSON_TOTAL[s.block]}`}];
   });
 }
 
@@ -1297,7 +1352,7 @@ const setHead = () => document.documentElement.style
 addEventListener("resize", setHead);
 setHead();
 
-renderCalendar(); refresh();
+renderCalendar(); refresh(); scrollToNow();
 </script>
 </body>
 </html>

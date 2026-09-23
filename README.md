@@ -46,8 +46,14 @@ flagged in the sidebar instead.
 ## The views
 
 - **Calendar** — every month, Monday to Friday, each school day showing its rotation
-  number and your lessons in period order, each tagged with its block number. Breaks
-  and days marked 0 are labelled in place. Click a day to see its times.
+  number and your lessons in period order, each tagged with its block number and its
+  running lesson number for the year (`#14`). Breaks and days marked 0 are labelled in
+  place. Days already behind you are dimmed, and the page opens on the current month.
+  Click a day to see its times.
+- **Countdown** — the banner above the calendar shows today (or the next school day),
+  how many teaching days remain until the next break, and how many are left in the
+  year. *Year at a glance* repeats the year total and lists the lessons left for each
+  of your courses, Extended Time included. Today counts as left until it's over.
 - **8-day cycle** — the rotation as a grid, showing each course sliding one period
   earlier each time it comes round, with a lesson count for the year.
 - **Print** — exactly one month per page, with the controls stripped out. Everything
@@ -62,7 +68,7 @@ one combined file or one file per item. **Odd days** and **Even days** are alway
 available, even with no courses named: they are all-day events titled with the rotation
 number (0–8, with day 0 on even), marked free so they label the day without blocking it.
 Duties travel together as a single *Duties* calendar, each event titled with its own duty
-and location.
+and location. Each lesson's description carries its number, such as *lesson 14 of 83*.
 
 An `.ics` file always imports into exactly one calendar, so to switch subjects on and
 off independently in Google Calendar you need one file each:
